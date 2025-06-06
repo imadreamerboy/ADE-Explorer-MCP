@@ -1,0 +1,6 @@
+gradio[mcp]>=5.0
+pandas
+requests
+plotly
+cachetools
+pytest 
