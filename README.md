@@ -1,3 +1,11 @@
+---
+title: Medication Adverse-Event Explorer
+emoji: 💊
+colorFrom: blue
+colorTo: green
+sdk: gradio
+app_file: src/app.py
+---
 # Medication Adverse-Event Explorer (ADE Explorer)
 
 A Gradio app that exposes a drug-event query tool as an MCP server. It has two core workflows: 
