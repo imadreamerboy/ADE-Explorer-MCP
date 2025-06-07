@@ -1,6 +1,6 @@
-gradio[mcp]>=5.0
+gradio[mcp]>=5.3
 pandas
 requests
 plotly
 cachetools
-pytest 
+pytest

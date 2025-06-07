@@ -4,7 +4,6 @@ emoji: 💊
 colorFrom: blue
 colorTo: green
 sdk: gradio
-app_file: src/app.py
 tag: 'mcp-server-track'
 short_description: 'Gradio app that exposes a drug-event tool as an MCP server.'
 ---
@@ -34,7 +33,7 @@ To use this application as a tool with an MCP client (like Cursor or Claude Desk
 
 1.  **Run the App**:
     ```bash
-    python src/app.py
+    python app.py
     ```
 2.  **Find the MCP URL**: The server will start and print the MCP URL in the console. It will look something like this:
     `http://127.0.0.1:7860/gradio_api/mcp/sse`

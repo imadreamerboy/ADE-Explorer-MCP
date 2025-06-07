@@ -1,6 +1,6 @@
 import gradio as gr
-from src.openfda_client import get_top_adverse_events, get_drug_event_pair_frequency
-from src.plotting import create_bar_chart
+from openfda_client import get_top_adverse_events, get_drug_event_pair_frequency
+from plotting import create_bar_chart
 import pandas as pd
 
 # --- Formatting Functions ---

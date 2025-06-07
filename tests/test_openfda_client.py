@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 import requests
-from src.openfda_client import get_top_adverse_events, get_drug_event_pair_frequency, cache
+from openfda_client import get_top_adverse_events, get_drug_event_pair_frequency, cache
 
 @pytest.fixture(autouse=True)
 def clear_cache():

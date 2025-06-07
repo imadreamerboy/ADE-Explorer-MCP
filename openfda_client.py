@@ -100,4 +100,4 @@ def get_drug_event_pair_frequency(drug_name: str, event_name: str) -> dict:
     except requests.exceptions.RequestException as req_err:
         return {"error": f"A network request error occurred: {req_err}"}
     except Exception as e:
-        return {"error": f"An unexpected error occurred: {e}"}
+        return {"error": f"An unexpected error occurred: {e}"} 
