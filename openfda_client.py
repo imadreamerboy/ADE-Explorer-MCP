@@ -169,8 +169,8 @@ def get_top_adverse_events(drug_name: str, limit: int = 10, patient_sex: Optiona
         return cache[cache_key]
 
     query = (
-        f'search=patient.drug.medicinalproduct:"{drug_name_processed}"'
-        f'&count=patient.reaction.reactionoutcome.exact&limit={limit}'
+        f'search={search_query}'
+        f'&count=patient.reaction.reactionmeddrapt.exact&limit={limit}'
     )
     
     try:
@@ -192,7 +192,7 @@ def get_top_adverse_events(drug_name: str, limit: int = 10, patient_sex: Optiona
 
     except requests.exceptions.HTTPError as http_err:
         if response.status_code == 404:
-            return {"error": f"No data found for drug: '{drug_name}'. It might be misspelled or not in the database."}
+            return {"error": f"No data found for '{drug_name}' with the specified filters. The drug may not be in the database, or there may be no reports matching the filter criteria."}
         return {"error": f"HTTP error occurred: {http_err}"}
     except requests.exceptions.RequestException as req_err:
         return {"error": f"A network request error occurred: {req_err}"}
@@ -379,7 +379,7 @@ def get_report_source_data(drug_name: str) -> dict:
 
     query = (
         f'search=patient.drug.medicinalproduct:"{drug_name_processed}"'
-        f'&count=patient.reaction.reactionmeddrapt.exact&limit=5'
+        f'&count=primarysource.qualification'
     )
 
     try:
@@ -393,7 +393,9 @@ def get_report_source_data(drug_name: str) -> dict:
         # Translate the qualification codes to human-readable terms
         if "results" in data:
             for item in data["results"]:
-                item["term"] = QUALIFICATION_MAPPING.get(item["term"], f"Unknown ({item['term']})")
+                # The API returns numeric codes, ensure they are strings for mapping
+                term_str = str(item["term"])
+                item["term"] = QUALIFICATION_MAPPING.get(term_str, f"Unknown ({term_str})")
 
         cache[cache_key] = data
         return data
