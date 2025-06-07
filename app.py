@@ -32,7 +32,7 @@ def format_top_events_results(data: dict, drug_name: str) -> str:
     try:
         df = pd.DataFrame(data["results"])
         df = df.rename(columns={"term": "Adverse Event", "count": "Report Count"})
-        result_string = df.to_string(index=False)
+        result_string = df.to_html(index=False, classes='table table-striped')
         return header + result_string
     except Exception as e:
         return f"An error occurred while formatting the data: {e}"
@@ -121,6 +121,11 @@ def serious_outcomes_tool(drug_name: str):
         tuple: A Plotly figure and a formatted string with the top serious outcomes.
     """
     data = get_serious_outcomes(drug_name)
+
+    if "error" in data or not data.get("results"):
+        text_summary = format_serious_outcomes_results(data, drug_name)
+        return text_summary, text_summary
+    
     chart = create_outcome_chart(data, drug_name)
     text_summary = format_serious_outcomes_results(data, drug_name)
     return chart, text_summary
@@ -223,6 +228,7 @@ interface3 = gr.Interface(
     title="Serious Outcome Analysis",
     description="Find the most frequently reported serious outcomes (e.g., hospitalization, death) for a specific medication.",
     examples=[["Lisinopril"], ["Ozempic"], ["Metformin"]],
+    allow_flagging="never"
 )
 
 interface2 = gr.Interface(
