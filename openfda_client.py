@@ -379,7 +379,7 @@ def get_report_source_data(drug_name: str) -> dict:
 
     query = (
         f'search=patient.drug.medicinalproduct:"{drug_name_processed}"'
-        f'&count=primarysource.qualification.exact&limit=5'
+        f'&count=patient.reaction.reactionmeddrapt.exact&limit=5'
     )
 
     try:

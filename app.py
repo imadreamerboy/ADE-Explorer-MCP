@@ -161,15 +161,19 @@ def report_source_tool(drug_name: str):
         drug_name (str): The generic name of the drug is preferred. A small sample of brand names (e.g., 'Tylenol') are converted to generic names for demonstration purposes.
 
     Returns:
-        A Plotly figure.
+        A Plotly figure and a string for the Markdown output.
     """
     data = get_report_source_data(drug_name)
 
+    if "error" in data:
+        return None, f"An error occurred: {data['error']}"
+
     if not data or not data.get("results"):
-        return create_placeholder_chart(f"No report source data found for '{drug_name}'.")
+        message = f"No report source data found for '{drug_name}'."
+        return create_placeholder_chart(message), message
 
     chart = create_pie_chart(data, drug_name)
-    return chart
+    return chart, ""
 
 # --- Gradio Interface ---
 
@@ -261,7 +265,10 @@ interface5 = gr.Interface(
     inputs=[
         gr.Textbox(label="Drug Name", info="e.g., 'Aspirin', 'Lisinopril'")
     ],
-    outputs=[gr.Plot(label="Report Source Breakdown")],
+    outputs=[
+        gr.Plot(label="Report Source Breakdown"),
+        gr.Markdown()
+    ],
     title="Report Source Breakdown",
     description="Show a pie chart breaking down the source of the reports (e.g., Consumer, Physician).",
     examples=[["Lisinopril"], ["Ibuprofen"]],
