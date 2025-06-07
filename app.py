@@ -234,6 +234,15 @@ with gr.Blocks(title="Medication Adverse-Event Explorer") as demo:
 
     with gr.Tabs():
         with gr.TabItem("About"):
+            gr.HTML("""
+                <div style="display: flex; justify-content: center;">
+                    <iframe width="560" height="315" src="https://www.youtube.com/embed/noGG-lQwn2U" 
+                            title="YouTube video player" frameborder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowfullscreen>
+                    </iframe>
+                </div>
+            """)
             gr.Markdown(readme_content)
 
         with gr.TabItem("Top Events"):
