@@ -181,12 +181,7 @@ def get_top_adverse_events(drug_name: str, limit: int = 10, patient_sex: Optiona
         response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
         
         data = response.json()
-        
-        # Translate the outcome codes to human-readable terms
-        if "results" in data:
-            for item in data["results"]:
-                item["term"] = OUTCOME_MAPPING.get(item["term"], f"Unknown ({item['term']})")
-
+                
         cache[cache_key] = data
         return data
 
