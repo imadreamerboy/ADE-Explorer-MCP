@@ -210,14 +210,15 @@ def get_top_adverse_events(drug_name: str, limit: int = 10, patient_sex: Optiona
 def get_drug_event_pair_frequency(drug_name: str, event_name: str) -> dict:
     """
     Query OpenFDA to get the total number of reports for a specific
-    drug-adverse event pair.
+    drug-adverse event pair, and the total reports for the drug alone.
 
     Args:
         drug_name (str): The name of the drug.
         event_name (str): The name of the adverse event.
 
     Returns:
-        dict: The JSON response from the API, or an error dictionary.
+        dict: A dictionary containing the results or an error message.
+              Includes `total` (for the pair) and `total_for_drug`.
     """
     if not drug_name or not event_name:
         return {"error": "Drug name and event name cannot be empty."}
@@ -229,25 +230,51 @@ def get_drug_event_pair_frequency(drug_name: str, event_name: str) -> dict:
     cache_key = f"pair_freq_{drug_name_processed}_{event_name_processed}"
     if cache_key in cache:
         return cache[cache_key]
-
-    query = (
-        f'search=patient.drug.medicinalproduct:"{drug_name_processed}"'
-        f'+AND+patient.reaction.reactionmeddrapt:"{event_name_processed}"'
-    )
-
+    
     try:
+        # First, get total reports for the drug to see if it exists
+        drug_query = f'search=patient.drug.medicinalproduct:"{drug_name_processed}"'
         time.sleep(REQUEST_DELAY_SECONDS)
+        drug_response = requests.get(f"{API_BASE_URL}?{drug_query}")
         
-        response = requests.get(f"{API_BASE_URL}?{query}")
-        response.raise_for_status()
+        # This is a critical failure if the drug isn't found
+        drug_response.raise_for_status() 
         
-        data = response.json()
+        drug_data = drug_response.json()
+        total_for_drug = drug_data.get("meta", {}).get("results", {}).get("total", 0)
+
+        # Second, get reports for the specific drug-event pair
+        pair_query = (
+            f'search=patient.drug.medicinalproduct:"{drug_name_processed}"'
+            f'+AND+patient.reaction.reactionmeddrapt:"{event_name_processed}"'
+        )
+        time.sleep(REQUEST_DELAY_SECONDS)
+        pair_response = requests.get(f"{API_BASE_URL}?{pair_query}")
+        
+        total_for_pair = 0
+        if pair_response.status_code == 200:
+            pair_data = pair_response.json()
+            total_for_pair = pair_data.get("meta", {}).get("results", {}).get("total", 0)
+        # We don't raise for 404 on the pair, as it just means 0 results
+        elif pair_response.status_code != 404:
+            pair_response.raise_for_status()
+
+        # Construct a consistent response structure
+        data = {
+            "meta": {
+                "results": {
+                    "total": total_for_pair,
+                    "total_for_drug": total_for_drug
+                }
+            }
+        }
+        
         cache[cache_key] = data
         return data
 
     except requests.exceptions.HTTPError as http_err:
-        if response.status_code == 404:
-            return {"error": f"No data found for drug '{drug_name}' and event '{event_name}'. They may be misspelled or not in the database."}
+        if http_err.response.status_code == 404:
+            return {"error": f"No data found for drug '{drug_name}'. It may be misspelled or not in the database."}
         return {"error": f"HTTP error occurred: {http_err}"}
     except requests.exceptions.RequestException as req_err:
         return {"error": f"A network request error occurred: {req_err}"}
