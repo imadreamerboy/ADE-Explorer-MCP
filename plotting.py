@@ -1,5 +1,32 @@
 import plotly.graph_objects as go
 import pandas as pd
+from typing import Dict, Any, Optional
+
+def create_placeholder_chart(message: str) -> go.Figure:
+    """
+    Creates a placeholder chart with a text message.
+
+    Args:
+        message (str): The message to display on the chart.
+
+    Returns:
+        go.Figure: A Plotly figure object with the message.
+    """
+    fig = go.Figure()
+    fig.add_annotation(
+        text=message,
+        xref="paper",
+        yref="paper",
+        showarrow=False,
+        font=dict(size=16)
+    )
+    fig.update_layout(
+        xaxis=dict(showgrid=False, zeroline=False, visible=False),
+        yaxis=dict(showgrid=False, zeroline=False, visible=False),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+    )
+    return fig
 
 def create_bar_chart(data: dict, drug_name: str):
     """

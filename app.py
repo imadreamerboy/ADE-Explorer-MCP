@@ -10,7 +10,8 @@ from plotting import (
     create_bar_chart, 
     create_outcome_chart,
     create_time_series_chart,
-    create_pie_chart
+    create_pie_chart,
+    create_placeholder_chart
 )
 import pandas as pd
 
@@ -106,8 +107,12 @@ def top_adverse_events_tool(drug_name: str, patient_sex: str = "all", min_age: i
         age_range = (min_age, max_age)
 
     data = get_top_adverse_events(drug_name, patient_sex=sex_code, age_range=age_range)
-    chart = create_bar_chart(data, drug_name)
     text_summary = format_top_events_results(data, drug_name)
+
+    if "error" in data or not data.get("results"):
+        return None, text_summary
+        
+    chart = create_bar_chart(data, drug_name)
     return chart, text_summary
 
 def serious_outcomes_tool(drug_name: str):
@@ -124,7 +129,7 @@ def serious_outcomes_tool(drug_name: str):
 
     if "error" in data or not data.get("results"):
         text_summary = format_serious_outcomes_results(data, drug_name)
-        return text_summary, text_summary
+        return None, text_summary
     
     chart = create_outcome_chart(data, drug_name)
     text_summary = format_serious_outcomes_results(data, drug_name)
@@ -158,6 +163,10 @@ def time_series_tool(drug_name: str, event_name: str, aggregation: str):
     """
     agg_code = 'Y' if aggregation == 'Yearly' else 'Q'
     data = get_time_series_data(drug_name, event_name)
+    
+    if "error" in data or not data.get("results"):
+        return create_placeholder_chart(f"No time-series data found for '{drug_name}' and '{event_name}'.")
+
     chart = create_time_series_chart(data, drug_name, event_name, time_aggregation=agg_code)
     return chart
 
@@ -169,11 +178,13 @@ def report_source_tool(drug_name: str):
         drug_name (str): The name of the drug.
 
     Returns:
-        A Plotly figure or a descriptive string if no data is available.
+        A Plotly figure.
     """
     data = get_report_source_data(drug_name)
+
     if not data or not data.get("results"):
-        return f"No report source data found for '{drug_name}'. The drug may not be in the database or it might be misspelled."
+        return create_placeholder_chart(f"No report source data found for '{drug_name}'.")
+
     chart = create_pie_chart(data, drug_name)
     return chart
 
