@@ -2,6 +2,8 @@
 
 Welcome to the Medication Adverse-Event Explorer, an interactive tool for exploring data from the FDA Adverse Event Reporting System (FAERS).
 
+<iframe width="560" height="315" src="https://www.youtube.com/embed/noGG-lQwn2U" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
 ***
 
 ### About This Tool
