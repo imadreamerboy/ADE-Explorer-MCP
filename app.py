@@ -88,6 +88,13 @@ def top_adverse_events_tool(drug_name: str, patient_sex: str = "all", min_age: i
     Returns:
         tuple: A Plotly figure and a formatted string with the top adverse events.
     """
+    if patient_sex is None:
+        patient_sex = "all"
+    if min_age is None:
+        min_age = 0
+    if max_age is None:
+        max_age = 120
+
     sex_code = None
     if patient_sex == "Male":
         sex_code = "1"
