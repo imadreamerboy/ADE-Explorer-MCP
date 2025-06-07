@@ -12,11 +12,9 @@ sdk_version: 5.33.0
 
 # Medication Adverse-Event Explorer (ADE Explorer)
 
-A Gradio app that exposes a drug-event query tool as an MCP server. It has two core workflows: 
-(A) finding top adverse events for a drug, and 
-(B) checking the frequency of a specific drug-event pair. 
+An interactive Gradio application for exploring and visualizing data from the FDA Adverse Event Reporting System (FAERS). It also functions as an MCP (Model Context Protocol) server, allowing it to be used as a tool by language models.
 
-It uses public data from OpenFDA.
+It was created for the [MCP Hackathon](https://huggingface.co/Agents-MCP-Hackathon) in May 2025.
 
 **Hackathon Track:** `mcp-server-track`
 
@@ -24,10 +22,13 @@ It uses public data from OpenFDA.
 
 ## Usage
 
-This application provides two tools, accessible via a tabbed interface or as MCP endpoints:
+The explorer is organized into several tabs, each providing a different view of the data:
 
-1.  **Top Events**: For a given drug name, it returns a list and a bar chart of the top 10 most frequently reported adverse events.
-2.  **Event Frequency**: For a given drug and adverse event pair, it returns the total number of reports found.
+-   **Top Events:** Find the most frequently reported adverse events for a specific drug. You can filter the results by the number of events to show, patient sex, and age range. The output includes a bar chart and a table with both raw counts and relative frequencies.
+-   **Serious Outcomes:** See a breakdown of the most serious outcomes (e.g., hospitalization, death) reported for a drug. The output includes a chart and a table showing the percentage of total serious reports for each outcome.
+-   **Event Frequency:** Get the total number of reports for a specific combination of a drug and an adverse event, along with the percentage this combination represents out of all reports for that drug.
+-   **Time-Series Trends:** Plot the number of adverse event reports over time for a specific drug and event pair, with options for yearly or quarterly aggregation.
+-   **Report Sources:** View a pie chart and data table showing the breakdown of who reported the adverse events (e.g., Consumer, Physician, Pharmacist).
 
 ## MCP Server Configuration
 
@@ -51,7 +52,33 @@ To use this application as a tool with an MCP client (like Cursor or Claude Desk
     }
     ```
 
-The server exposes two tools: `top_adverse_events_tool(drug_name)` and `drug_event_stats_tool(drug_name, event_name)`.
+or for Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "ade_explorer": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "http://127.0.0.1:7860/gradio_api/mcp/sse",
+        "--transport",
+        "sse-only"
+      ]
+    }
+  }
+}
+```
+
+### Exposed MCP Tools
+
+The server exposes the following tools, corresponding to the functionalities in the UI:
+
+-   `top_adverse_events_tool(drug_name: str, top_n: int = 10, patient_sex: str = "all", min_age: int = 0, max_age: int = 120)`: Finds the top reported adverse events for a given drug, with optional filters.
+-   `serious_outcomes_tool(drug_name: str, top_n: int = 6)`: Finds the top reported serious outcomes for a given drug.
+-   `drug_event_stats_tool(drug_name: str, event_name: str)`: Gets the total number of reports for a specific drug and adverse event pair.
+-   `time_series_tool(drug_name: str, event_name: str, aggregation: str)`: Creates a time-series plot for a drug-event pair (`aggregation` can be 'Yearly' or 'Quarterly').
+-   `report_source_tool(drug_name: str, top_n: int = 5)`: Creates a pie chart of report sources for a given drug.
 
 ---
 
