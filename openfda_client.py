@@ -108,13 +108,20 @@ DRUG_SYNONYM_MAPPING = {
 }
 
 OUTCOME_MAPPING = {
-    "1": "Life-Threatening",
-    "2": "Hospitalization - Initial or Prolonged",
-    "3": "Disability",
-    "4": "Congenital Anomaly",
-    "5": "Required Intervention to Prevent Permanent Impairment/Damage",
-    "6": "Death",
-    "7": "Other Serious (Important Medical Event)",
+    "1": "Recovered/Resolved",
+    "2": "Recovering/Resolving",
+    "3": "Not Recovered/Not Resolved",
+    "4": "Recovered/Resolved with Sequelae",
+    "5": "Fatal",
+    "6": "Unknown",
+}
+
+QUALIFICATION_MAPPING = {
+    "1": "Physician",
+    "2": "Pharmacist",
+    "3": "Other Health Professional",
+    "4": "Lawyer",
+    "5": "Consumer or Non-Health Professional",
 }
 
 def get_top_adverse_events(drug_name: str, limit: int = 10, patient_sex: Optional[str] = None, age_range: Optional[Tuple[int, int]] = None) -> dict:
@@ -153,8 +160,8 @@ def get_top_adverse_events(drug_name: str, limit: int = 10, patient_sex: Optiona
         return cache[cache_key]
 
     query = (
-        f'search={search_query}'
-        f'&count=patient.reaction.reactionmeddrapt.exact&limit={limit}'
+        f'search=patient.drug.medicinalproduct:"{drug_name_processed}"'
+        f'&count=patient.reaction.reactionoutcome.exact&limit={limit}'
     )
     
     try:
@@ -165,6 +172,12 @@ def get_top_adverse_events(drug_name: str, limit: int = 10, patient_sex: Optiona
         response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
         
         data = response.json()
+        
+        # Translate the outcome codes to human-readable terms
+        if "results" in data:
+            for item in data["results"]:
+                item["term"] = OUTCOME_MAPPING.get(item["term"], f"Unknown ({item['term']})")
+
         cache[cache_key] = data
         return data
 
@@ -345,7 +358,7 @@ def get_report_source_data(drug_name: str) -> dict:
 
     query = (
         f'search=patient.drug.medicinalproduct:"{drug_name_processed}"'
-        f'&count=qualification.exact&limit=5'
+        f'&count=primarysource.qualification.exact&limit=5'
     )
 
     try:
@@ -356,6 +369,7 @@ def get_report_source_data(drug_name: str) -> dict:
         
         data = response.json()
 
+        # Translate the qualification codes to human-readable terms
         if "results" in data:
             for item in data["results"]:
                 item["term"] = QUALIFICATION_MAPPING.get(item["term"], f"Unknown ({item['term']})")
@@ -370,12 +384,4 @@ def get_report_source_data(drug_name: str) -> dict:
     except requests.exceptions.RequestException as req_err:
         return {"error": f"A network request error occurred: {req_err}"}
     except Exception as e:
-        return {"error": f"An unexpected error occurred: {e}"}
-
-QUALIFICATION_MAPPING = {
-    "1": "Physician",
-    "2": "Pharmacist",
-    "3": "Other Health Professional",
-    "4": "Lawyer",
-    "5": "Consumer or non-health professional",
-} 
+        return {"error": f"An unexpected error occurred: {e}"} 

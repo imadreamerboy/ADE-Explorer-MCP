@@ -39,7 +39,7 @@ def top_adverse_events_tool(drug_name: str, patient_sex: str = "all", min_age: i
     MCP Tool: Finds the top reported adverse events for a given drug.
 
     Args:
-        drug_name (str): The name of the drug to search for.
+        drug_name (str): The generic name of the drug is preferred! A small sample of brand names (e.g., 'Tylenol') are converted to generic names for demonstration purposes.
         patient_sex (str): The patient's sex to filter by.
         min_age (int): The minimum age for the filter.
         max_age (int): The maximum age for the filter.
@@ -91,7 +91,7 @@ def serious_outcomes_tool(drug_name: str):
     MCP Tool: Finds the top reported serious outcomes for a given drug.
 
     Args:
-        drug_name (str): The name of the drug to search for.
+        drug_name (str): The generic name of the drug is preferred. A small sample of brand names (e.g., 'Tylenol') are converted to generic names for demonstration purposes.
     
     Returns:
         tuple: A Plotly figure, a Pandas DataFrame, and a summary string.
@@ -123,7 +123,7 @@ def drug_event_stats_tool(drug_name: str, event_name: str):
     MCP Tool: Gets the total number of reports for a specific drug and adverse event pair.
 
     Args:
-        drug_name (str): The name of the drug to search for.
+        drug_name (str): The generic name of the drug is preferred. A small sample of brand names (e.g., 'Tylenol') are converted to generic names for demonstration purposes.
         event_name (str): The name of the adverse event to search for.
     
     Returns:
@@ -137,7 +137,7 @@ def time_series_tool(drug_name: str, event_name: str, aggregation: str):
     MCP Tool: Creates a time-series plot for a drug-event pair.
 
     Args:
-        drug_name (str): The name of the drug.
+        drug_name (str): The generic name of the drug is preferred. A small sample of brand names (e.g., 'Tylenol') are converted to generic names for demonstration purposes.
         event_name (str): The name of the adverse event.
         aggregation (str): Time aggregation ('Yearly' or 'Quarterly').
 
@@ -158,7 +158,7 @@ def report_source_tool(drug_name: str):
     MCP Tool: Creates a pie chart of report sources for a given drug.
 
     Args:
-        drug_name (str): The name of the drug.
+        drug_name (str): The generic name of the drug is preferred. A small sample of brand names (e.g., 'Tylenol') are converted to generic names for demonstration purposes.
 
     Returns:
         A Plotly figure.
