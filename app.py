@@ -164,9 +164,11 @@ def report_source_tool(drug_name: str):
         drug_name (str): The name of the drug.
 
     Returns:
-        A Plotly figure.
+        A Plotly figure or a descriptive string if no data is available.
     """
     data = get_report_source_data(drug_name)
+    if not data or not data.get("results"):
+        return f"No report source data found for '{drug_name}'. The drug may not be in the database or it might be misspelled."
     chart = create_pie_chart(data, drug_name)
     return chart
 
@@ -256,7 +258,8 @@ interface5 = gr.Interface(
     outputs=[gr.Plot(label="Report Source Breakdown")],
     title="Report Source Breakdown",
     description="Show a pie chart breaking down the source of the reports (e.g., Consumer, Physician).",
-    examples=[["Lisinopril"], ["Ozempic"]],
+    examples=[["Lisinopril"], ["Ibuprofen"]],
+    allow_flagging="never"
 )
 
 demo = gr.TabbedInterface(
