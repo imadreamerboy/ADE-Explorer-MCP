@@ -34,12 +34,13 @@ def format_pair_frequency_results(data: dict, drug_name: str, event_name: str) -
 
 # --- Tool Functions ---
 
-def top_adverse_events_tool(drug_name: str, patient_sex: str = "all", min_age: int = 0, max_age: int = 120):
+def top_adverse_events_tool(drug_name: str, top_n: int = 10, patient_sex: str = "all", min_age: int = 0, max_age: int = 120):
     """
     MCP Tool: Finds the top reported adverse events for a given drug.
 
     Args:
         drug_name (str): The generic name of the drug is preferred! A small sample of brand names (e.g., 'Tylenol') are converted to generic names for demonstration purposes.
+        top_n (int): The number of top adverse events to return.
         patient_sex (str): The patient's sex to filter by.
         min_age (int): The minimum age for the filter.
         max_age (int): The maximum age for the filter.
@@ -64,7 +65,7 @@ def top_adverse_events_tool(drug_name: str, patient_sex: str = "all", min_age: i
     if min_age > 0 or max_age < 120:
         age_range = (min_age, max_age)
 
-    data = get_top_adverse_events(drug_name, patient_sex=sex_code, age_range=age_range)
+    data = get_top_adverse_events(drug_name, limit=top_n, patient_sex=sex_code, age_range=age_range)
     
     if "error" in data:
         error_message = f"An error occurred: {data['error']}"
@@ -79,24 +80,32 @@ def top_adverse_events_tool(drug_name: str, patient_sex: str = "all", min_age: i
     df = pd.DataFrame(data["results"])
     df = df.rename(columns={"term": "Adverse Event", "count": "Report Count"})
     
+    total_reports = data.get("meta", {}).get("total_reports_for_query", 0)
+    if total_reports > 0:
+        df['Relative Frequency (%)'] = ((df['Report Count'] / total_reports) * 100).round(2)
+    else:
+        df['Relative Frequency (%)'] = 0.0
+
     header = (
-        f"### Top Adverse Events for '{drug_name.title()}'\n"
+        f"### Top {len(df)} Adverse Events for '{drug_name.title()}'\n"
+        f"Based on **{total_reports:,}** total reports matching the given filters.\n"
         "**Source**: FDA FAERS via OpenFDA\n"
         "**Disclaimer**: Spontaneous reports do not prove causation. Consult a healthcare professional."
     )
     return chart, df, header
 
-def serious_outcomes_tool(drug_name: str):
+def serious_outcomes_tool(drug_name: str, top_n: int = 6):
     """
     MCP Tool: Finds the top reported serious outcomes for a given drug.
 
     Args:
         drug_name (str): The generic name of the drug is preferred. A small sample of brand names (e.g., 'Tylenol') are converted to generic names for demonstration purposes.
+        top_n (int): The number of top serious outcomes to return.
     
     Returns:
         tuple: A Plotly figure, a Pandas DataFrame, and a summary string.
     """
-    data = get_serious_outcomes(drug_name)
+    data = get_serious_outcomes(drug_name, limit=top_n)
 
     if "error" in data:
         error_message = f"An error occurred: {data['error']}"
@@ -111,8 +120,16 @@ def serious_outcomes_tool(drug_name: str):
     df = pd.DataFrame(data["results"])
     df = df.rename(columns={"term": "Serious Outcome", "count": "Report Count"})
     
+    total_serious_reports = data.get("meta", {}).get("total_reports_for_query", 0)
+    if total_serious_reports > 0:
+        df['% of Serious Reports'] = ((df['Report Count'] / total_serious_reports) * 100).round(2)
+    else:
+        df['% of Serious Reports'] = 0.0
+
     header = (
-        f"### Top Serious Outcomes for '{drug_name.title()}'\n"
+        f"### Top {len(df)} Serious Outcomes for '{drug_name.title()}'\n"
+        f"Out of **{total_serious_reports:,}** total serious reports. "
+        "Note: a single report may be associated with multiple outcomes.\n"
         "**Source**: FDA FAERS via OpenFDA\n"
         "**Disclaimer**: Spontaneous reports do not prove causation. Consult a healthcare professional."
     )
@@ -153,27 +170,43 @@ def time_series_tool(drug_name: str, event_name: str, aggregation: str):
     chart = create_time_series_chart(data, drug_name, event_name, time_aggregation=agg_code)
     return chart
 
-def report_source_tool(drug_name: str):
+def report_source_tool(drug_name: str, top_n: int = 5):
     """
     MCP Tool: Creates a pie chart of report sources for a given drug.
 
     Args:
         drug_name (str): The generic name of the drug is preferred. A small sample of brand names (e.g., 'Tylenol') are converted to generic names for demonstration purposes.
+        top_n (int): The number of top sources to return.
 
     Returns:
-        A Plotly figure and a string for the Markdown output.
+        tuple: A Plotly figure, a Pandas DataFrame, and a summary string.
     """
-    data = get_report_source_data(drug_name)
+    data = get_report_source_data(drug_name, limit=top_n)
 
     if "error" in data:
-        return None, f"An error occurred: {data['error']}"
+        error_message = f"An error occurred: {data['error']}"
+        return create_placeholder_chart(error_message), pd.DataFrame(), error_message
 
     if not data or not data.get("results"):
         message = f"No report source data found for '{drug_name}'."
-        return create_placeholder_chart(message), message
+        return create_placeholder_chart(message), pd.DataFrame(), message
 
     chart = create_pie_chart(data, drug_name)
-    return chart, ""
+    
+    df = pd.DataFrame(data['results'])
+    df = df.rename(columns={"term": "Source", "count": "Report Count"})
+
+    total_reports = data.get("meta", {}).get("total_reports_for_query", 0)
+    if total_reports > 0:
+        df['Percentage'] = ((df['Report Count'] / total_reports) * 100).round(2)
+    else:
+        df['Percentage'] = 0.0
+
+    header = (
+        f"### Report Sources for '{drug_name.title()}'\n"
+        f"Based on **{total_reports:,}** reports with source information."
+    )
+    return chart, df, header
 
 # --- Gradio Interface ---
 
@@ -193,6 +226,12 @@ interface1 = gr.Interface(
         gr.Textbox(
             label="Drug Name", 
             info="Enter a brand or generic drug name (e.g., 'Aspirin', 'Lisinopril')."
+        ),
+        gr.Slider(
+            5, 50, 
+            value=10, 
+            label="Number of Events to Show", 
+            step=1
         ),
         gr.Radio(
             ["All", "Male", "Female"], 
@@ -230,7 +269,8 @@ interface3 = gr.Interface(
         gr.Textbox(
             label="Drug Name", 
             info="Enter a brand or generic drug name (e.g., 'Aspirin', 'Lisinopril')."
-        )
+        ),
+        gr.Slider(1, 6, value=6, label="Number of Outcomes to Show", step=1),
     ],
     outputs=[
         gr.Plot(label="Top Serious Outcomes Chart"),
@@ -274,10 +314,12 @@ interface4 = gr.Interface(
 interface5 = gr.Interface(
     fn=report_source_tool,
     inputs=[
-        gr.Textbox(label="Drug Name", info="e.g., 'Aspirin', 'Lisinopril'")
+        gr.Textbox(label="Drug Name", info="e.g., 'Aspirin', 'Lisinopril'"),
+        gr.Slider(1, 5, value=5, label="Number of Sources to Show", step=1),
     ],
     outputs=[
         gr.Plot(label="Report Source Breakdown"),
+        gr.DataFrame(label="Report Source Data", interactive=False),
         gr.Markdown()
     ],
     title="Report Source Breakdown",

@@ -168,8 +168,9 @@ def get_top_adverse_events(drug_name: str, limit: int = 10, patient_sex: Optiona
     if cache_key in cache:
         return cache[cache_key]
 
-    query = (
-        f'search={search_query}'
+    # Query for top events by count
+    count_query_url = (
+        f'{API_BASE_URL}?search={search_query}'
         f'&count=patient.reaction.reactionmeddrapt.exact&limit={limit}'
     )
     
@@ -177,10 +178,22 @@ def get_top_adverse_events(drug_name: str, limit: int = 10, patient_sex: Optiona
         # Respect rate limits
         time.sleep(REQUEST_DELAY_SECONDS)
         
-        response = requests.get(f"{API_BASE_URL}?{query}")
+        response = requests.get(count_query_url)
         response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
-        
         data = response.json()
+        
+        # Query for total reports matching the filters
+        total_query_url = f'{API_BASE_URL}?search={search_query}'
+        time.sleep(REQUEST_DELAY_SECONDS)
+        total_response = requests.get(total_query_url)
+        total_response.raise_for_status()
+        total_data = total_response.json()
+        total_reports = total_data.get("meta", {},).get("results", {}).get("total", 0)
+
+        # Add total to the main data object
+        if 'meta' not in data:
+            data['meta'] = {}
+        data['meta']['total_reports_for_query'] = total_reports
                 
         cache[cache_key] = data
         return data
@@ -241,14 +254,14 @@ def get_drug_event_pair_frequency(drug_name: str, event_name: str) -> dict:
     except Exception as e:
         return {"error": f"An unexpected error occurred: {e}"}
 
-def get_serious_outcomes(drug_name: str, limit: int = 10) -> dict:
+def get_serious_outcomes(drug_name: str, limit: int = 6) -> dict:
     """
     Query OpenFDA to get the most frequent serious outcomes for a given drug.
     This function makes multiple API calls to count different outcome fields.
 
     Args:
         drug_name (str): The name of the drug to search for.
-        limit (int): This argument is maintained for signature consistency but is not directly used in the multi-query logic.
+        limit (int): The maximum number of outcomes to return.
 
     Returns:
         dict: A dictionary containing aggregated results or an error.
@@ -260,7 +273,7 @@ def get_serious_outcomes(drug_name: str, limit: int = 10) -> dict:
     drug_name_processed = DRUG_SYNONYM_MAPPING.get(drug_name_processed, drug_name_processed)
     
     # Use a cache key for the aggregated result
-    cache_key = f"serious_outcomes_aggregated_{drug_name_processed}"
+    cache_key = f"serious_outcomes_aggregated_{drug_name_processed}_{limit}"
     if cache_key in cache:
         return cache[cache_key]
 
@@ -268,6 +281,22 @@ def get_serious_outcomes(drug_name: str, limit: int = 10) -> dict:
     
     # Base search for all serious reports
     base_search_query = f'patient.drug.medicinalproduct:"{drug_name_processed}"+AND+serious:1'
+
+    # Get total number of serious reports
+    total_serious_reports = 0
+    try:
+        total_query_url = f"{API_BASE_URL}?search={base_search_query}"
+        time.sleep(REQUEST_DELAY_SECONDS)
+        response = requests.get(total_query_url)
+        if response.status_code == 200:
+            total_data = response.json()
+            total_serious_reports = total_data.get("meta", {}).get("results", {}).get("total", 0)
+        elif response.status_code != 404:
+            # If this call fails, we can still proceed, the total will just be 0.
+            pass
+    except requests.exceptions.RequestException:
+        # If fetching total fails, proceed without it.
+        pass
 
     for field in SERIOUS_OUTCOME_FIELDS:
         try:
@@ -296,11 +325,14 @@ def get_serious_outcomes(drug_name: str, limit: int = 10) -> dict:
 
     # Format the results to match the expected structure for plotting
     final_data = {
-        "results": [{"term": k, "count": v} for k, v in aggregated_results.items()]
+        "results": [{"term": k, "count": v} for k, v in aggregated_results.items()],
+        "meta": {"total_reports_for_query": total_serious_reports}
     }
     
-    # Sort results by count, descending
+    # Sort results by count, descending, and then limit
     final_data["results"] = sorted(final_data["results"], key=lambda x: x['count'], reverse=True)
+    if limit:
+        final_data["results"] = final_data["results"][:limit]
     
     cache[cache_key] = final_data
     return final_data
@@ -352,12 +384,13 @@ def get_time_series_data(drug_name: str, event_name: str) -> dict:
     except Exception as e:
         return {"error": f"An unexpected error occurred: {e}"}
 
-def get_report_source_data(drug_name: str) -> dict:
+def get_report_source_data(drug_name: str, limit: int = 5) -> dict:
     """
     Query OpenFDA to get the breakdown of report sources for a given drug.
 
     Args:
         drug_name (str): The name of the drug to search for.
+        limit (int): The maximum number of sources to return.
 
     Returns:
         dict: The JSON response from the API, or an error dictionary.
@@ -368,7 +401,7 @@ def get_report_source_data(drug_name: str) -> dict:
     drug_name_processed = drug_name.lower().strip()
     drug_name_processed = DRUG_SYNONYM_MAPPING.get(drug_name_processed, drug_name_processed)
 
-    cache_key = f"report_source_{drug_name_processed}"
+    cache_key = f"report_source_{drug_name_processed}_{limit}"
     if cache_key in cache:
         return cache[cache_key]
 
@@ -385,12 +418,25 @@ def get_report_source_data(drug_name: str) -> dict:
         
         data = response.json()
 
-        # Translate the qualification codes to human-readable terms
+        # Translate the qualification codes and calculate total before limiting
         if "results" in data:
+            # Sort by count first
+            data['results'] = sorted(data['results'], key=lambda x: x['count'], reverse=True)
+
+            # Calculate total from all results before limiting
+            total_with_source = sum(item['count'] for item in data['results'])
+            if 'meta' not in data:
+                data['meta'] = {}
+            data['meta']['total_reports_for_query'] = total_with_source
+            
+            # Translate codes after processing
             for item in data["results"]:
-                # The API returns numeric codes, ensure they are strings for mapping
                 term_str = str(item["term"])
                 item["term"] = QUALIFICATION_MAPPING.get(term_str, f"Unknown ({term_str})")
+
+            # Apply limit
+            if limit:
+                data['results'] = data['results'][:limit]
 
         cache[cache_key] = data
         return data
