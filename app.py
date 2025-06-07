@@ -177,6 +177,16 @@ def report_source_tool(drug_name: str):
 
 # --- Gradio Interface ---
 
+with open("gradio_readme.md", "r") as f:
+    readme_content = f.read()
+
+interface_about = gr.Interface(
+    fn=lambda: readme_content,
+    inputs=[],
+    outputs=gr.Markdown(),
+    title="About the Medication Adverse-Event Explorer",
+)
+
 interface1 = gr.Interface(
     fn=top_adverse_events_tool,
     inputs=[
@@ -211,6 +221,7 @@ interface1 = gr.Interface(
     description="Find the most frequently reported adverse events for a specific medication.",
     examples=[["Lisinopril"], ["Ozempic"], ["Metformin"]],
     #cache_examples=True,
+    allow_flagging="never",
 )
 
 interface3 = gr.Interface(
@@ -277,8 +288,8 @@ interface5 = gr.Interface(
 )
 
 demo = gr.TabbedInterface(
-    [interface1, interface3, interface2, interface4, interface5], 
-    ["Top Events", "Serious Outcomes", "Event Frequency", "Time-Series Trends", "Report Sources"],
+    [interface_about, interface1, interface3, interface2, interface4, interface5], 
+    ["About", "Top Events", "Serious Outcomes", "Event Frequency", "Time-Series Trends", "Report Sources"],
     title="Medication Adverse-Event Explorer"
 )
 
