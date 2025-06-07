@@ -124,6 +124,15 @@ QUALIFICATION_MAPPING = {
     "5": "Consumer or Non-Health Professional",
 }
 
+SERIOUS_OUTCOME_FIELDS = [
+    "seriousnessdeath",
+    "seriousnesslifethreatening",
+    "seriousnesshospitalization",
+    "seriousnessdisabling",
+    "seriousnesscongenitalanomali",
+    "seriousnessother",
+]
+
 def get_top_adverse_events(drug_name: str, limit: int = 10, patient_sex: Optional[str] = None, age_range: Optional[Tuple[int, int]] = None) -> dict:
     """
     Query OpenFDA to get the top adverse events for a given drug.
@@ -240,54 +249,66 @@ def get_drug_event_pair_frequency(drug_name: str, event_name: str) -> dict:
 def get_serious_outcomes(drug_name: str, limit: int = 10) -> dict:
     """
     Query OpenFDA to get the most frequent serious outcomes for a given drug.
-    Outcomes include: death, disability, hospitalization, etc.
+    This function makes multiple API calls to count different outcome fields.
 
     Args:
         drug_name (str): The name of the drug to search for.
-        limit (int): The maximum number of outcomes to return.
+        limit (int): This argument is maintained for signature consistency but is not directly used in the multi-query logic.
 
     Returns:
-        dict: The JSON response from the API, or an error dictionary.
+        dict: A dictionary containing aggregated results or an error.
     """
     if not drug_name:
         return {"error": "Drug name cannot be empty."}
 
     drug_name_processed = drug_name.lower().strip()
     drug_name_processed = DRUG_SYNONYM_MAPPING.get(drug_name_processed, drug_name_processed)
-    cache_key = f"serious_outcomes_{drug_name_processed}_{limit}"
-
+    
+    # Use a cache key for the aggregated result
+    cache_key = f"serious_outcomes_aggregated_{drug_name_processed}"
     if cache_key in cache:
         return cache[cache_key]
 
-    query = (
-        f'search=patient.drug.medicinalproduct:"{drug_name_processed}"'
-        f'&count=reactionoutcome.exact&limit={limit}'
-    )
+    aggregated_results = {}
+    
+    # Base search for all serious reports
+    base_search_query = f'patient.drug.medicinalproduct:"{drug_name_processed}"+AND+serious:1'
 
-    try:
-        time.sleep(REQUEST_DELAY_SECONDS)
-        
-        response = requests.get(f"{API_BASE_URL}?{query}")
-        response.raise_for_status()
-        
-        data = response.json()
-        
-        # Map outcome codes to human-readable names
-        if "results" in data:
-            for item in data["results"]:
-                item["term"] = OUTCOME_MAPPING.get(item["term"], f"Unknown ({item['term']})")
-        
-        cache[cache_key] = data
-        return data
+    for field in SERIOUS_OUTCOME_FIELDS:
+        try:
+            # Each query counts reports where the specific seriousness field exists
+            query = f"search={base_search_query}+AND+_exists_:{field}"
+            
+            time.sleep(REQUEST_DELAY_SECONDS)
+            response = requests.get(f"{API_BASE_URL}?{query}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                total_count = data.get("meta", {}).get("results", {}).get("total", 0)
+                if total_count > 0:
+                    # Use a more readable name for the outcome
+                    outcome_name = field.replace("seriousness", "").replace("anomali", "anomaly").title()
+                    aggregated_results[outcome_name] = total_count
+            # Ignore 404s, as they just mean no results for that specific outcome
+            elif response.status_code != 404:
+                response.raise_for_status()
 
-    except requests.exceptions.HTTPError as http_err:
-        if response.status_code == 404:
-            return {"error": f"No data found for drug: '{drug_name}'. It might be misspelled or not in the database."}
-        return {"error": f"HTTP error occurred: {http_err}"}
-    except requests.exceptions.RequestException as req_err:
-        return {"error": f"A network request error occurred: {req_err}"}
-    except Exception as e:
-        return {"error": f"An unexpected error occurred: {e}"}
+        except requests.exceptions.RequestException as e:
+            return {"error": f"A network request error occurred for field {field}: {e}"}
+
+    if not aggregated_results:
+        return {"error": f"No serious outcome data found for drug: '{drug_name}'."}
+
+    # Format the results to match the expected structure for plotting
+    final_data = {
+        "results": [{"term": k, "count": v} for k, v in aggregated_results.items()]
+    }
+    
+    # Sort results by count, descending
+    final_data["results"] = sorted(final_data["results"], key=lambda x: x['count'], reverse=True)
+    
+    cache[cache_key] = final_data
+    return final_data
 
 def get_time_series_data(drug_name: str, event_name: str) -> dict:
     """

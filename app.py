@@ -206,6 +206,7 @@ interface1 = gr.Interface(
     title="Top Adverse Events by Drug",
     description="Find the most frequently reported adverse events for a specific medication.",
     examples=[["Lisinopril"], ["Ozempic"], ["Metformin"]],
+    cache_examples=True,
 )
 
 interface3 = gr.Interface(
@@ -224,7 +225,8 @@ interface3 = gr.Interface(
     title="Serious Outcome Analysis",
     description="Find the most frequently reported serious outcomes (e.g., hospitalization, death) for a specific medication.",
     examples=[["Lisinopril"], ["Ozempic"], ["Metformin"]],
-    allow_flagging="never"
+    allow_flagging="never",
+    cache_examples=True,
 )
 
 interface2 = gr.Interface(
@@ -237,6 +239,7 @@ interface2 = gr.Interface(
     title="Drug/Event Pair Frequency",
     description="Get the total number of reports for a specific drug and adverse event combination.",
     examples=[["Lisinopril", "Cough"], ["Ozempic", "Nausea"]],
+    cache_examples=True,
 )
 
 interface4 = gr.Interface(
@@ -250,6 +253,7 @@ interface4 = gr.Interface(
     title="Time-Series Trend Plotting",
     description="Plot the number of adverse event reports over time for a specific drug-event pair.",
     examples=[["Lisinopril", "Cough", "Yearly"], ["Ozempic", "Nausea", "Quarterly"]],
+    cache_examples=True,
 )
 
 interface5 = gr.Interface(
@@ -261,7 +265,8 @@ interface5 = gr.Interface(
     title="Report Source Breakdown",
     description="Show a pie chart breaking down the source of the reports (e.g., Consumer, Physician).",
     examples=[["Lisinopril"], ["Ibuprofen"]],
-    allow_flagging="never"
+    allow_flagging="never",
+    cache_examples=True,
 )
 
 demo = gr.TabbedInterface(
