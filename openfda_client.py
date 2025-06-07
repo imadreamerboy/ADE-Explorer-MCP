@@ -248,7 +248,7 @@ def get_serious_outcomes(drug_name: str, limit: int = 10) -> dict:
 
     query = (
         f'search=patient.drug.medicinalproduct:"{drug_name_processed}"'
-        f'&count=patient.reaction.reactionoutcome.exact&limit={limit}'
+        f'&count=reactionoutcome.exact&limit={limit}'
     )
 
     try:
@@ -301,7 +301,7 @@ def get_time_series_data(drug_name: str, event_name: str) -> dict:
     query = (
         f'search=patient.drug.medicinalproduct:"{drug_name_processed}"'
         f'+AND+patient.reaction.reactionmeddrapt:"{event_name_processed}"'
-        f'&count=receivedate'
+        f'&count=receiptdate'
     )
 
     try:
@@ -345,7 +345,7 @@ def get_report_source_data(drug_name: str) -> dict:
 
     query = (
         f'search=patient.drug.medicinalproduct:"{drug_name_processed}"'
-        f'&count=primarysource.qualification.exact'
+        f'&count=qualification.exact&limit=5'
     )
 
     try:

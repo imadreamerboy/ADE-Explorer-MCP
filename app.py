@@ -17,48 +17,6 @@ import pandas as pd
 
 # --- Formatting Functions ---
 
-def format_top_events_results(data: dict, drug_name: str) -> str:
-    """Formats the results for the top adverse events tool."""
-    if "error" in data:
-        return f"An error occurred: {data['error']}"
-    
-    if "results" not in data or not data["results"]:
-        return f"No adverse event data found for '{drug_name}'. The drug may not be in the database or it might be misspelled."
-
-    header = f"Top Adverse Events for '{drug_name.title()}'\n"
-    header += "Source: FDA FAERS via OpenFDA\n"
-    header += "Disclaimer: Spontaneous reports do not prove causation. Consult a healthcare professional.\n"
-    header += "---------------------------------------------------\n"
-
-    try:
-        df = pd.DataFrame(data["results"])
-        df = df.rename(columns={"term": "Adverse Event", "count": "Report Count"})
-        result_string = df.to_string(index=False)
-        return header + result_string
-    except Exception as e:
-        return f"An error occurred while formatting the data: {e}"
-
-def format_serious_outcomes_results(data: dict, drug_name: str) -> str:
-    """Formats the results for the serious outcomes tool."""
-    if "error" in data:
-        return f"An error occurred: {data['error']}"
-    
-    if "results" not in data or not data["results"]:
-        return f"No serious outcome data found for '{drug_name}'. The drug may not be in the database or it might be misspelled."
-
-    header = f"Top Serious Outcomes for '{drug_name.title()}'\n"
-    header += "Source: FDA FAERS via OpenFDA\n"
-    header += "Disclaimer: Spontaneous reports do not prove causation. Consult a healthcare professional.\n"
-    header += "---------------------------------------------------\n"
-
-    try:
-        df = pd.DataFrame(data["results"])
-        df = df.rename(columns={"term": "Serious Outcome", "count": "Report Count"})
-        result_string = df.to_string(index=False)
-        return header + result_string
-    except Exception as e:
-        return f"An error occurred while formatting the data: {e}"
-
 def format_pair_frequency_results(data: dict, drug_name: str, event_name: str) -> str:
     """Formats the results for the drug-event pair frequency tool."""
     if "error" in data:
@@ -87,7 +45,7 @@ def top_adverse_events_tool(drug_name: str, patient_sex: str = "all", min_age: i
         max_age (int): The maximum age for the filter.
     
     Returns:
-        tuple: A Plotly figure and a formatted string with the top adverse events.
+        tuple: A Plotly figure, a Pandas DataFrame, and a summary string.
     """
     if patient_sex is None:
         patient_sex = "all"
@@ -107,13 +65,26 @@ def top_adverse_events_tool(drug_name: str, patient_sex: str = "all", min_age: i
         age_range = (min_age, max_age)
 
     data = get_top_adverse_events(drug_name, patient_sex=sex_code, age_range=age_range)
-    text_summary = format_top_events_results(data, drug_name)
-
-    if "error" in data or not data.get("results"):
-        return None, text_summary
+    
+    if "error" in data:
+        error_message = f"An error occurred: {data['error']}"
+        return create_placeholder_chart(error_message), pd.DataFrame(), error_message
+    
+    if "results" not in data or not data["results"]:
+        message = f"No adverse event data found for '{drug_name}'. The drug may not be in the database or it might be misspelled."
+        return create_placeholder_chart(message), pd.DataFrame(), message
         
     chart = create_bar_chart(data, drug_name)
-    return chart, text_summary
+    
+    df = pd.DataFrame(data["results"])
+    df = df.rename(columns={"term": "Adverse Event", "count": "Report Count"})
+    
+    header = (
+        f"### Top Adverse Events for '{drug_name.title()}'\n"
+        "**Source**: FDA FAERS via OpenFDA\n"
+        "**Disclaimer**: Spontaneous reports do not prove causation. Consult a healthcare professional."
+    )
+    return chart, df, header
 
 def serious_outcomes_tool(drug_name: str):
     """
@@ -123,17 +94,29 @@ def serious_outcomes_tool(drug_name: str):
         drug_name (str): The name of the drug to search for.
     
     Returns:
-        tuple: A Plotly figure and a formatted string with the top serious outcomes.
+        tuple: A Plotly figure, a Pandas DataFrame, and a summary string.
     """
     data = get_serious_outcomes(drug_name)
 
-    if "error" in data or not data.get("results"):
-        text_summary = format_serious_outcomes_results(data, drug_name)
-        return None, text_summary
-    
+    if "error" in data:
+        error_message = f"An error occurred: {data['error']}"
+        return create_placeholder_chart(error_message), pd.DataFrame(), error_message
+
+    if "results" not in data or not data["results"]:
+        message = f"No serious outcome data found for '{drug_name}'. The drug may not be in the database or it might be misspelled."
+        return create_placeholder_chart(message), pd.DataFrame(), message
+
     chart = create_outcome_chart(data, drug_name)
-    text_summary = format_serious_outcomes_results(data, drug_name)
-    return chart, text_summary
+
+    df = pd.DataFrame(data["results"])
+    df = df.rename(columns={"term": "Serious Outcome", "count": "Report Count"})
+    
+    header = (
+        f"### Top Serious Outcomes for '{drug_name.title()}'\n"
+        "**Source**: FDA FAERS via OpenFDA\n"
+        "**Disclaimer**: Spontaneous reports do not prove causation. Consult a healthcare professional."
+    )
+    return chart, df, header
 
 def drug_event_stats_tool(drug_name: str, event_name: str):
     """
@@ -217,7 +200,8 @@ interface1 = gr.Interface(
     ],
     outputs=[
         gr.Plot(label="Top Adverse Events Chart"),
-        gr.Textbox(label="Top Adverse Events (Raw Data)", lines=15)
+        gr.DataFrame(label="Top Adverse Events", interactive=False),
+        gr.Markdown()
     ],
     title="Top Adverse Events by Drug",
     description="Find the most frequently reported adverse events for a specific medication.",
@@ -234,7 +218,8 @@ interface3 = gr.Interface(
     ],
     outputs=[
         gr.Plot(label="Top Serious Outcomes Chart"),
-        gr.Textbox(label="Top Serious Outcomes (Raw Data)", lines=15)
+        gr.DataFrame(label="Top Serious Outcomes", interactive=False),
+        gr.Markdown()
     ],
     title="Serious Outcome Analysis",
     description="Find the most frequently reported serious outcomes (e.g., hospitalization, death) for a specific medication.",
