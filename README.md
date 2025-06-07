@@ -5,6 +5,8 @@ colorFrom: blue
 colorTo: green
 sdk: gradio
 app_file: src/app.py
+tag: 'mcp-server-track'
+short_description: 'A Gradio app that exposes a drug-event query tool as an MCP server.'
 ---
 
 # Medication Adverse-Event Explorer (ADE Explorer)
