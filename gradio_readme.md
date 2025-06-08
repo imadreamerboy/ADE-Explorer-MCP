@@ -6,7 +6,7 @@ Welcome to the Medication Adverse-Event Explorer, an interactive tool for explor
 
 ### About This Tool
 
-This application provides a user-friendly interface to query and visualize data on adverse events reported for various medications. It is designed to help researchers, healthcare professionals, and the public explore trends and patterns in post-market drug safety data. It also functions as an MCP (Machine-Composable Protocol) server, allowing it to be used as a tool by language models.
+This application provides a user-friendly interface to query and visualize data on adverse events reported for various medications. It is designed to help researchers, healthcare professionals, and the public explore trends and patterns in post-market drug safety data. It also functions as an MCP (Model Context Protocol) server, allowing it to be used as a tool by language models.
 
 ### Data Source
 
